@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Inventory</h1>
+
+{% if items %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Quantity</th>
+                    <th>Expiry Date</th>
+                    <th>Added On</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr class="{{ item.status }}">
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.category }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.expiry_date }}</td>
+                    <td>{{ item.added_on }}</td>
+                    <td>
+                        {% if item.status == "expired" %}
+                            ❌ Expired
+                        {% elif item.status == "expiring_soon" %}
+                            ⚠️ Expiring Soon
+                        {% else %}
+                            ✅ Fresh
+                        {% endif %}
+                    </td>
+                    <td>
+                        <!-- Delete button uses a POST form for safety -->
+                        <form method="POST"
+                              action="{{ url_for('delete_item', item_id=item.id) }}"
+                              style="margin:0;"
+                              onsubmit="return confirm('Delete {{ item.name }}?');">
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <p class="empty-state">Your pantry is empty. <a href="{{ url_for('add_item') }}">Add an item!</a></p>
+{% endif %}
+
+{% endblock %}

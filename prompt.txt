@@ -1,0 +1,81 @@
+You are building a complete, working college project called "ShelfLife" inside the currently open workspace folder (DevOps). It is a pantry and expiry tracker with an automated CI/CD pipeline. This is for a Cloud and DevOps course whose rule is: every project must use AWS, Git, Jenkins, and at least one DevOps tool (I use Docker AND Terraform). The app is intentionally simple; the DevOps pipeline is what gets graded. Build everything end to end, run it, and fix anything that fails. Do not leave TODOs or stubs.
+
+## 1. App (Flask + SQLite)
+Create the app inside `app/`:
+- `app/app.py` using an app factory `create_app(db_path=None)`. The DB path comes from the env var `DB_PATH` (default `data/shelflife.db`). Create the table automatically on startup.
+- Table `items`: id, name, category, quantity (int), expiry_date (date), added_on.
+- Pages (Jinja templates in `app/templates/`, clean responsive CSS in `app/static/style.css`, no JS frameworks):
+  1. `/` Dashboard: counts of Expired, Expiring in 3 days, and Fresh items, plus a count per category.
+  2. `/add` Form to add an item (name, category dropdown: Dairy, Vegetables, Fruits, Grains, Snacks, Beverages, Other; quantity; expiry date) with validation.
+  3. `/expiring` Items expiring within the next 3 days, plus already-expired items highlighted in red.
+  4. `/inventory` Full list sorted by expiry date with a Delete button (POST).
+- `/health` returns JSON {"status": "ok"} (used by Docker healthcheck and the pipeline).
+- Put the status logic in a pure function `get_status(expiry_date, today=None)` returning "expired", "expiring_soon" (0 to 3 days left), or "fresh". Make it unit-testable.
+- Run with gunicorn on port 5000 in the container.
+
+## 2. Tests
+`tests/test_app.py` with pytest, at least 6 tests: get_status for expired, today, 3 days, 4 days; add item via POST; /health returns 200; delete item; the dashboard renders. Use a temp database so tests never touch real data. Add `pytest.ini` so tests run from the project root. Make Jenkins-friendly output with `--junitxml=test-results.xml`.
+
+## 3. Docker
+- `Dockerfile`: python:3.11-slim, non-root user, install from `requirements.txt` (Flask, gunicorn, pytest), copy app, expose 5000, HEALTHCHECK hitting /health, CMD gunicorn. Mount `/data` as a volume for SQLite persistence.
+- `.dockerignore`.
+- `docker-compose.yml` for local runs (port 5000:5000, named volume for /data).
+- Build the image locally, run the container, and curl /health, /, and /add to prove it works. Then stop and clean up.
+
+## 4. Terraform (folder `terraform/`)
+Files: `main.tf`, `variables.tf`, `outputs.tf`, `versions.tf`, `terraform.tfvars.example`, `user_data_jenkins.sh`, `user_data_app.sh`.
+- AWS provider, region variable (default us-east-1). Credentials come from the environment or the AWS CLI; never hardcode any.
+- Look up the latest Ubuntu 22.04 AMI with a data source and use the default VPC.
+- Generate the key pair with `tls_private_key` + `aws_key_pair`, and write the private key to `shelflife-key.pem` with `local_file` (file_permission 0400).
+- Security group for Jenkins: 22 and 8080. Security group for the app server: 22 and 5000. Make the allowed CIDR a variable (default 0.0.0.0/0 with a comment advising to restrict it).
+- Two EC2 instances:
+  - `jenkins_server`: user_data installs Java 17, Jenkins (official apt repo), Docker, adds the `jenkins` user to the `docker` group, installs git, creates a 2 GB swap file, and enables and starts the services.
+  - `app_server`: user_data installs Docker, adds the `ubuntu` user to the `docker` group, and enables the service.
+- Variables: `instance_type` (default t3.small, with a comment saying t2.micro works on personal free tier only with swap), `instance_profile_name` (default "" ; set it to "LabInstanceProfile" on AWS Academy; use null when empty), `project_name` (default "shelflife"), `allowed_cidr`.
+- Elastic IPs for both instances (so IPs survive restarts), with outputs for the Jenkins URL, the app URL, the SSH commands, and the public IPs.
+- CloudWatch: a log group `/shelflife/app`, and a CPU utilization alarm (> 70% for 2 periods of 5 minutes) on the app server.
+- Backend: use local state by default. Include a commented-out S3 backend block with instructions.
+- Run `terraform fmt` and `terraform validate` (run `terraform init -backend=false` first). If terraform is not installed, say so clearly and double check the syntax by hand instead.
+
+## 5. Jenkins
+`Jenkinsfile` (declarative pipeline):
+- Environment: DOCKERHUB_USER and IMAGE_NAME as variables at the top, credentials IDs `dockerhub-creds` (username/password) and `app-server-ssh` (SSH private key), and `APP_SERVER_IP` as a Jenkins environment variable or a pipeline parameter.
+- Stages: Checkout → Install & Test (create a venv, pip install, run pytest with junit xml; publish with the `junit` step in post) → Build Docker Image (tags: BUILD_NUMBER and latest) → Push to Docker Hub → Deploy (using `sshagent`, SSH to the app server, `docker pull`, stop and remove the old container, run the new one with `-p 80:5000 -v shelflife-data:/data --restart unless-stopped`, optionally with `--log-driver=awslogs` commented out as an optional step) → Smoke Test (curl /health on the app server and fail the build if it is not 200).
+- `post` section: success and failure messages, `docker image prune -f`.
+- Make `dev` branch builds run Test and Build only, and `main` branch builds run the whole pipeline (use `when { branch 'main' }`, and mention in the README that this needs a Multibranch pipeline, with a simpler alternative of a normal pipeline job pointed at main).
+- The deploy script should live in `scripts/deploy.sh`, and the Jenkinsfile should call it.
+
+## 6. Git
+- Initialize git, create a sensible `.gitignore` (venv, __pycache__, *.pem, terraform state, .terraform/, tfvars, *.db, test-results.xml).
+- Make the first commit on `main` and create the `dev` branch. Do not add any remote or push.
+
+## 7. Documentation (in `docs/` and the root)
+- `README.md`: what ShelfLife is, the architecture diagram (ASCII), the tech stack table mapping the AWS, Git, Jenkins, Docker, and Terraform usage, how to run locally, how to run tests, and the full step-by-step deployment guide:
+  (a) set up AWS credentials (separate sections for AWS Academy, including how to copy the session credentials and use LabInstanceProfile, and for a personal free-tier account),
+  (b) `terraform init/apply`,
+  (c) opening Jenkins on port 8080, getting the initial admin password via SSH, installing the suggested plugins plus the SSH Agent and Pipeline plugins,
+  (d) adding the two credentials, creating the pipeline job, and setting up the GitHub webhook,
+  (e) the demo flow: change a line, push, watch the pipeline deploy,
+  (f) `terraform destroy` cleanup, with a warning about charges,
+  (g) a troubleshooting section with at least 8 real common problems (Jenkins out of memory, docker permission denied, expired Academy credentials, changed IPs, webhook not firing, etc.).
+- `docs/architecture.md`: the architecture explained, plus a Mermaid diagram.
+- `docs/project-report.md`: a ready-to-submit report template with: abstract, problem statement, objectives, tools and why each was chosen, architecture, implementation steps, pipeline stages explained, results, a list of the screenshots I should take (with labels), conclusion, and future scope. Fill it in fully; leave only the screenshot placeholders.
+
+## 8. Final verification (do all of this before finishing)
+1. Create the venv, install the requirements, and run pytest. All tests must pass.
+2. Build and run the Docker container and curl the endpoints as above.
+3. Validate the Terraform files.
+4. Check that every file mentioned in the README exists.
+5. Print the final project tree and a short summary listing: what is verified to work, and what I must do manually (Docker Hub account and token, GitHub repo and webhook, AWS credentials, Jenkins credentials).
+
+Project tree to produce:
+DevOps/
+  app/ (app.py, templates/, static/)
+  tests/
+  terraform/
+  scripts/deploy.sh
+  docs/
+  Dockerfile, .dockerignore, docker-compose.yml
+  Jenkinsfile, requirements.txt, pytest.ini, .gitignore, README.md
+
+Rules: no secrets or real credentials in any file; use placeholders like YOUR_DOCKERHUB_USERNAME clearly marked in one place; keep the code simple, readable, and commented so a student can explain it in a viva; if something fails, debug and fix it rather than skipping it.

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Expiring Soon</h1>
+<p style="margin-bottom:1rem; color:#6b7280; font-size:0.9rem;">
+    Items that have already expired or will expire within the next 3 days.
+</p>
+
+{% if items %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Quantity</th>
+                    <th>Expiry Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr class="{{ item.status }}">
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.category }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.expiry_date }}</td>
+                    <td>
+                        {% if item.status == "expired" %}
+                            ❌ Expired
+                        {% else %}
+                            ⚠️ Expiring Soon
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <p class="empty-state">🎉 Nothing expiring soon — your pantry looks great!</p>
+{% endif %}
+
+{% endblock %}

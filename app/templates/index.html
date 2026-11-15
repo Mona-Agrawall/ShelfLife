@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Dashboard</h1>
+
+<!-- ===== Stat cards ===== -->
+<div class="stat-cards">
+    <div class="card expired">
+        <div class="card-label">Expired</div>
+        <div class="card-value">{{ counts.expired }}</div>
+    </div>
+    <div class="card expiring_soon">
+        <div class="card-label">Expiring Soon</div>
+        <div class="card-value">{{ counts.expiring_soon }}</div>
+    </div>
+    <div class="card fresh">
+        <div class="card-label">Fresh</div>
+        <div class="card-value">{{ counts.fresh }}</div>
+    </div>
+</div>
+
+<!-- ===== Category breakdown ===== -->
+<h2>Category Breakdown</h2>
+
+{% if category_counts %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Items</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cat, count in category_counts.items() %}
+                <tr>
+                    <td>{{ cat }}</td>
+                    <td>{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <p class="empty-state">No items in your pantry yet. <a href="{{ url_for('add_item') }}">Add one!</a></p>
+{% endif %}
+
+{% endblock %}
