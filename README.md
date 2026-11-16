@@ -38,6 +38,15 @@ The application tracks food items and dynamically categorizes their status as **
 
 ---
 
+## Screenshots
+<img width="1387" height="717" alt="image" src="https://github.com/user-attachments/assets/bce66dfb-65b3-4cee-8d47-c30946bc4963" />
+<img width="1356" height="718" alt="image" src="https://github.com/user-attachments/assets/d987975b-929d-49bf-9a5c-1f0dbd8e2898" />
+<img width="1387" height="588" alt="image" src="https://github.com/user-attachments/assets/527f37e3-b71a-49a4-b562-234e32d3986d" />
+<img width="1400" height="640" alt="image" src="https://github.com/user-attachments/assets/31d53608-71f4-4404-8c6b-29f1b44a07e6" />
+
+
+
+
 ## 🏗 System Architecture
 
 The project utilizes a two-tier cloud topology on AWS: a **Jenkins CI/CD Orchestration Server** and an **Application Hosting Server**, interconnected via automated GitHub Webhooks and secured SSH agents.
