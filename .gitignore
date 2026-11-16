@@ -45,6 +45,8 @@ terraform.tfvars
 *.swp
 *.swo
 
-# OS
+# OS & Local Prompts
 .DS_Store
 Thumbs.db
+prompt.txt
+
