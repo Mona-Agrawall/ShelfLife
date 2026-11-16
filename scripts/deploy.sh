@@ -40,7 +40,7 @@ docker pull "$IMAGE"
 # ---------------------------------------------------------------------------
 echo "==> Stopping and removing existing container (if any)..."
 docker stop "$CONTAINER_NAME" 2>/dev/null || true
-docker rm   "$CONTAINER_NAME" 2>/dev/null || true
+docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # Step 3: Run the new container
@@ -73,16 +73,24 @@ docker run -d \
 # ---------------------------------------------------------------------------
 # Step 4: Wait for the container to initialize, then check the health endpoint
 # ---------------------------------------------------------------------------
-echo "==> Waiting 10 seconds for container to initialize..."
-sleep 10
+echo "==> Waiting for container to initialize and checking health endpoint..."
+HEALTHY=false
+for i in {1..15}; do
+    if curl -sf http://localhost/health >/dev/null 2>&1; then
+        HEALTHY=true
+        break
+    fi
+    echo "Waiting for container to become healthy (attempt $i/15)..."
+    sleep 2
+done
 
-echo "==> Checking health endpoint at http://localhost/health ..."
-if curl -sf http://localhost/health; then
+if [ "$HEALTHY" = true ]; then
+    echo "==> Health check PASSED: http://localhost/health responded with HTTP 200."
+    curl -s http://localhost/health
     echo ""
-    echo "==> Health check PASSED. Deployment successful."
+    echo "==> Deployment successful."
     exit 0
 else
-    echo ""
     echo "ERROR: Health check FAILED. The container may not be running correctly." >&2
     docker logs "$CONTAINER_NAME" >&2 || true
     exit 1

@@ -1,0 +1,6 @@
+# Enforce LF endings on shell scripts and pipeline files
+*.sh text eol=lf
+Jenkinsfile text eol=lf
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+*.py text eol=lf
