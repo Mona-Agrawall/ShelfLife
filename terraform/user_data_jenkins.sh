@@ -29,8 +29,8 @@ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Java 17 installed."
 # 3. Add Jenkins official apt repository and install Jenkins
 # -----------------------------------------------------------------------------
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Adding Jenkins repository..."
-curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | \
-  gpg --dearmor -o /usr/share/keyrings/jenkins-keyring.gpg
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2026.key | \
+  gpg --dearmor --yes -o /usr/share/keyrings/jenkins-keyring.gpg
 
 echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] \
   https://pkg.jenkins.io/debian-stable binary/" | \
@@ -53,7 +53,7 @@ apt-get install -y ca-certificates curl gnupg lsb-release
 # Add Docker's official GPG key
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
-  gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  gpg --dearmor --batch --yes -o /etc/apt/keyrings/docker.gpg
 chmod a+r /etc/apt/keyrings/docker.gpg
 
 # Set up Docker repository
